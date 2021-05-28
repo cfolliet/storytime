@@ -1,22 +1,19 @@
 <script>
-	import Nav from '../components/Nav.svelte';
-
-	export let segment;
+	import Nav from "../components/Nav.svelte";
 </script>
 
-<style>
-	main {
-		position: relative;
-		max-width: 56em;
-		background-color: white;
-		padding: 2em;
-		margin: 0 auto;
-		box-sizing: border-box;
-	}
-</style>
+<svelte:head>
+	<title>Storytime</title>
+	<link rel="stylesheet" href="https://unpkg.com/mvp.css" /><script
+		src="https://getinsights.io/js/insights.js"></script>
+	<script>
+		insights.init("JynHv1V87_aSNmof");
+		insights.trackPages();
+	</script>
+</svelte:head>
 
-<Nav {segment}/>
+<Nav />
 
 <main>
-	<slot></slot>
+	<slot />
 </main>

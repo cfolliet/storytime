@@ -1,5 +1,5 @@
 {
-  "name": "TODO",
+  "name": "storytime",
   "description": "TODO",
   "version": "0.0.1",
   "scripts": {
@@ -9,7 +9,10 @@
     "start": "node __sapper__/build"
   },
   "dependencies": {
+    "chart.js": "^3.3.0",
     "compression": "^1.7.1",
+    "date-fns": "^2.22.1",
+    "jira.js": "^2.3.0",
     "polka": "next",
     "sirv": "^1.0.0"
   },
