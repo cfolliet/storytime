@@ -265,6 +265,7 @@
             <p>Loading...</p>
         {:then}
             <canvas use:renderChart={data} id="chart" width="5" height="2" />
+            {@debug data}
         {/await}
     </aside>
 </section>

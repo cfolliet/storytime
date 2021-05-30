@@ -1,28 +1,28 @@
-const { Client } = require("jira.js");
-const dateFns = require('date-fns')
+const fetch = require('node-fetch');
+const dateFns = require('date-fns');
 
 let lastJql;
 let events;
 let lastError;
 
 export async function get(req, res, next) {
-    return;
     const { jql, analyze, host, email, token } = req.query;
     const data = {};
 
     if (jql != lastJql) {
         events = null
         lastJql = jql;
-        const client = getJiraClient(host, email, token)
-        lastError = await validateJql(client, decodeURIComponent(jql));
+        lastError = await validateJql(host, email, token, jql);
         if (!lastError) {
-            const issues = await getIssues(client, decodeURIComponent(jql));
-            events = getEvents(issues);
+            const issues = await getIssues(host, email, token, decodeURIComponent(jql));
+            data.values = issues.map(p => p.changelog.histories);
+            //events = getEvents(issues);
         }
     }
 
     data.error = lastError;
 
+    /*
     if (events) {
         let filteredEvents;
 
@@ -35,6 +35,7 @@ export async function get(req, res, next) {
         data.datasets = datasets;
         data.statistics = getStatistics(data);
     }
+    */
 
     if (data !== null) {
         res.setHeader('Content-Type', 'application/json');
@@ -44,15 +45,55 @@ export async function get(req, res, next) {
     }
 }
 
-async function validateJql(client, jql) {
-    const result = await client.jql.parseJqlQuery({ queries: [jql] })
-    const errors = result.queries[0].errors
-    return errors != undefined ? errors.join(';') : null
+async function validateJql(host, email, token, jql) {
+    let response;
+    try {
+        const bodyData = `{
+        "queries": [
+          "${jql}"
+        ]
+      }`;
+        response = await fetch(`${host}/rest/api/2/jql/parse`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Basic ${Buffer.from(
+                    email + ':' + token
+                ).toString('base64')}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: bodyData
+        })
+        const errors = response.queries[0].errors
+        return errors != undefined ? errors.join(';') : null
+    } catch (error) {
+        console.log(error);
+    }
 }
 
-async function getIssues(client, jql) {
+async function getIssues(host, email, token, jql) {
     const fields = ['resolutiondate', 'created'];
+    const expand = ['changelog'];
     let result;
+
+    let response;
+    try {
+        response = await fetch(`${host}/rest/api/2/search?jql=${jql}&fields=${fields}&expand=${expand}&maxResults=100&startAt=0`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Basic ${Buffer.from(
+                    email + ':' + token
+                ).toString('base64')}`,
+                'Accept': 'application/json'
+            }
+        })
+    } catch (error) {
+        console.log(error);
+    }
+
+    const data = await response.json();
+    console.log(data)
+    return data.issues;
 
     result = await client.issueSearch.searchForIssuesUsingJqlGet({ jql: jql, fields: fields, maxResults: 100, startAt: 0 });
     let issues = result.issues;
@@ -63,18 +104,6 @@ async function getIssues(client, jql) {
     }
 
     return issues;
-}
-
-function getJiraClient(host, email, token) {
-    return new Client({
-        host: host,
-        authentication: {
-            basic: {
-                username: email,
-                apiToken: token
-            }
-        }
-    });
 }
 
 function getEvents(issues) {
