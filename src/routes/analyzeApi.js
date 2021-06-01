@@ -71,7 +71,7 @@ async function validateJql(host, email, token, jql) {
 }
 
 async function getIssues(host, email, token, jql) {
-    const fields = ['resolutiondate', 'created'];
+    const fields = ['resolutiondate', 'created', 'customfield_10200'];
     const expand = ['changelog'];
     let result;
     let issues;
@@ -117,13 +117,29 @@ async function getIssues(host, email, token, jql) {
 }
 
 function getAnalysis(issues) {
+    console.log("Getting analysis")
     let result = [];
 
-    [issues[0]].forEach(issue => {
-        issue.changelog.histoties.forEach(history => {
-
-            console.log(history);
+    issues.forEach(issue => {
+        let startProgress;
+        let endProgress;
+        issue.changelog.histories.forEach(history => {
+            history.items.forEach(item => {
+                if (item.field == 'status') {
+                    if (item.toString == 'In Progress') {
+                        startProgress = history.created
+                    }
+                    else if (item.fromString == 'In Progress' && item.toString == 'Peer review') {
+                        endProgress = history.created
+                    }
+                }
+            })
         })
+
+        if (startProgress != null && endProgress != null) {
+            result.push({ key: issue.key, sp: issue.fields.customfield_10200, startProgress, endProgress })
+        }
     })
 
+    console.log(result);
 }
