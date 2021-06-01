@@ -21,6 +21,7 @@ export async function get(req, res, next) {
     }
 
     data.error = lastError;
+    getCustomField(host, email, token);
 
     /*
     if (events) {
@@ -71,8 +72,8 @@ async function validateJql(host, email, token, jql) {
 }
 
 async function getIssues(host, email, token, jql) {
-    const fields = ['resolutiondate', 'created', 'customfield_10200'];
-    const expand = ['changelog'];
+    const fields = ['resolutiondate', 'created', 'customfield_10004'];
+    const expand = ['changelog', 'names'];
     let result;
     let issues;
 
@@ -137,9 +138,24 @@ function getAnalysis(issues) {
         })
 
         if (startProgress != null && endProgress != null) {
-            result.push({ key: issue.key, sp: issue.fields.customfield_10200, startProgress, endProgress })
+            result.push({ key: issue.key, sp: issue.fields.customfield_10004, startProgress, endProgress })
         }
     })
 
+    console.log(result);
+}
+
+async function getCustomField(host, email, token, fieldName = 'Story Points') {
+    let response = await fetch(`${host}/rest/api/2/field`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Basic ${Buffer.from(
+                email + ':' + token
+            ).toString('base64')}`,
+            'Accept': 'application/json'
+        }
+    })
+    let result = await response.json();
+    result = result.filter(r => r.name == fieldName);
     console.log(result);
 }
