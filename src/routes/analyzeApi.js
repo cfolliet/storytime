@@ -14,29 +14,14 @@ export async function get(req, res, next) {
         lastJql = jql;
         lastError = await validateJql(host, email, token, decodeURIComponent(jql));
         if (!lastError) {
+            // getCustomField(host, email, token);
             const issues = await getIssues(host, email, token, decodeURIComponent(jql));
-            getAnalysis(issues);
-            data.issues = issues
+            const analysis = getAnalysis(issues);
+            data.datasets = getDatasets(analysis)
         }
     }
 
     data.error = lastError;
-    getCustomField(host, email, token);
-
-    /*
-    if (events) {
-        let filteredEvents;
-
-        let analyzeBeginDate = dateFns.subWeeks(new Date(), analyze);
-        filteredEvents = events.filter(e => dateFns.isAfter(e.date, analyzeBeginDate))
-
-        const simulations = getSimulations(filteredEvents);
-        const datasets = getDatasets(filteredEvents, simulations)
-
-        data.datasets = datasets;
-        data.statistics = getStatistics(data);
-    }
-    */
 
     if (data !== null) {
         res.setHeader('Content-Type', 'application/json');
@@ -118,31 +103,71 @@ async function getIssues(host, email, token, jql) {
 }
 
 function getAnalysis(issues) {
-    console.log("Getting analysis")
     let result = [];
 
     issues.forEach(issue => {
+        if (issue.fields.customfield_10004 == null) {
+            return;
+        }
+
         let startProgress;
         let endProgress;
         issue.changelog.histories.forEach(history => {
             history.items.forEach(item => {
                 if (item.field == 'status') {
                     if (item.toString == 'In Progress') {
-                        startProgress = history.created
+                        startProgress = dateFns.parseJSON(history.created)
                     }
-                    else if (item.fromString == 'In Progress' && item.toString == 'Peer review') {
-                        endProgress = history.created
+                    //else if (item.fromString == 'In Progress' && item.toString == 'Peer review') {
+                    else if (item.fromString == 'In Progress') {
+                        endProgress = dateFns.parseJSON(history.created)
                     }
                 }
             })
         })
 
         if (startProgress != null && endProgress != null) {
-            result.push({ key: issue.key, sp: issue.fields.customfield_10004, startProgress, endProgress })
+            const duration = dateFns.differenceInBusinessDays(endProgress, startProgress)
+            const entry = { key: issue.key, sp: issue.fields.customfield_10004, startProgress, endProgress, duration }
+            result.push(entry)
         }
     })
 
-    console.log(result);
+    return result;
+}
+
+function getDatasets(entries) {
+    const all = []
+    const bysp = [];
+    const datasets = { all, bysp };
+
+    entries.forEach((entry, index) => {
+        let item = all.find(i => i.x == entry.duration && i.y == entry.sp)
+        if (item == null) {
+            item = { x: entry.duration, y: entry.sp, r: 0 }
+            all.push(item);
+        }
+        item.r += 3;
+
+        // stats
+        item = bysp.find(i => i.sp == entry.sp)
+        if (item == null) {
+            item = { sp: entry.sp, count: 0, duration: 0, durations: [], keys: [] }
+            bysp.push(item);
+        }
+        item.count++;
+        item.duration += entry.duration;
+        item.durations.push(entry.duration)
+        item.keys.push(entry.key)
+    })
+
+    bysp.forEach(item => {
+        item.average = item.duration / item.count;
+        item.median = median(item.durations)
+    })
+    bysp.sort((a, b) => a.sp - b.sp)
+
+    return datasets;
 }
 
 async function getCustomField(host, email, token, fieldName = 'Story Points') {
@@ -158,4 +183,20 @@ async function getCustomField(host, email, token, fieldName = 'Story Points') {
     let result = await response.json();
     result = result.filter(r => r.name == fieldName);
     console.log(result);
+}
+
+function median(values) {
+    if (values.length === 0) return 0;
+    values = [...values];
+
+    values.sort(function (a, b) {
+        return a - b;
+    });
+
+    var half = Math.floor(values.length / 2);
+
+    if (values.length % 2)
+        return values[half];
+
+    return (values[half - 1] + values[half]) / 2.0;
 }

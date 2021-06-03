@@ -1,6 +1,6 @@
 <script>
     import { onMount } from "svelte";
-    import Chart from "chart.js";
+    import Chart from "chart.js/auto"; // register all components available in chartjs
 
     let jql;
     let analyze = 13;
@@ -80,6 +80,7 @@
         promiseData = fetch(url);
         const res = await promiseData;
         data = await res.json();
+        console.table(data.datasets.bysp);
     }
 
     function renderChart(node) {
@@ -91,94 +92,28 @@
                 if (!data || data.error) {
                     return;
                 }
-                /*
                 chart = new Chart(ctx, {
-                    type: "bar",
+                    type: "bubble",
                     data: {
                         datasets: [
                             {
-                                label: "new issues",
-                                data: data.datasets.new,
-                                backgroundColor: "#ffe0e6",
-                                borderColor: "#ff7c98",
-                                borderWidth: "1",
-                            },
-                            {
-                                label: "issues done",
-                                data: data.datasets.done,
-                                backgroundColor: "#dbf2f2",
-                                borderColor: "#68caca",
-                                borderWidth: "1",
-                            },
-                            {
-                                label: "remains to be done",
-                                data: data.datasets.todo,
-                                type: "line",
-                                fill: false,
-                                backgroundColor: "#d7ecfb",
-                                borderColor: "#d4ebfb",
-                            },
-                            {
-                                label: "20% confidence",
-                                data: data.datasets.twenty,
-                                borderDash: [3, 3],
-                                type: "line",
-                                fill: false,
-                                backgroundColor: "#ffe0e6",
-                                borderColor: "#ff7c98",
-                            },
-                            {
-                                label: "50% confidence",
-                                data: data.datasets.fifty,
-                                borderDash: [3, 3],
-                                type: "line",
-                                fill: false,
-                                backgroundColor: "#fff5dd",
-                                borderColor: "#ffd36c",
-                            },
-                            {
-                                label: "80% confidence",
-                                data: data.datasets.heighty,
-                                borderDash: [3, 3],
-                                type: "line",
-                                fill: false,
-                                backgroundColor: "#dbf2f2",
-                                borderColor: "#68caca",
+                                data: data.datasets.all,
                             },
                         ],
                     },
                     options: {
-                        title: {
-                            display: true,
-                            text: "Percentage of confidence in finishing all issues",
-                        },
-                        scales: {
-                            xAxes: [
-                                {
-                                    type: "time",
-                                    time: {
-                                        unit: "week",
-                                        isoWeekday: true,
-                                        displayFormats: {
-                                            week: "D MMM YYYY",
-                                        },
-                                        tooltipFormat: "D MMM YYYY",
-                                    },
-                                },
-                            ],
-                            yAxes: [
-                                {
-                                    ticks: {
-                                        beginAtZero: true,
-                                        precision: 0,
-                                        suggestedMax: 3,
-                                    },
-                                },
-                            ],
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: "top",
+                            },
+                            title: {
+                                display: true,
+                                text: "Chart.js Bubble Chart",
+                            },
                         },
                     },
                 });
-                */
             },
             destroy() {
                 if (chart) {
@@ -265,7 +200,6 @@
             <p>Loading...</p>
         {:then}
             <canvas use:renderChart={data} id="chart" width="5" height="2" />
-            {@debug data}
         {/await}
     </aside>
 </section>
